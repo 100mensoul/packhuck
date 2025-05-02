@@ -96,90 +96,86 @@
   <!-- ======= 依存ライブラリ ======= -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+<!-- ======= インライン JS ======= -->
+<script>
+  let model;
+  const video = document.getElementById('video');
+  const scanBtn = document.getElementById('scan-btn');
+  const suggestionsEl = document.getElementById('suggestions');
 
-  <!-- ======= インライン JS ======= -->
-  <script>
-    let model;
-    const video = document.getElementById('video');
-    const scanBtn = document.getElementById('scan-btn');
-    const suggestionsEl = document.getElementById('suggestions');
+  // PackHuck のリストを取得
+  function loadPackItems() {
+    return JSON.parse(localStorage.getItem('packhuck_items')) || [];
+  }
 
-    // カメラ映像をセット＆再生（背面カメラ優先）
-    async function setupCamera() {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' }  // ← ここでリアカメラを指定
+  // 英→日マップ
+  const MAP_EN_TO_JP = {
+    'laptop':     'パソコン',
+    'cell phone': 'スマホ',
+    'book':       '本',
+    'backpack':   'バッグ',
+    'bottle':     '水筒/ペットボトル',
+    // …必要に応じて追加
+  };
+
+  // カテゴリごとのパッキング指示
+  const INSTRUCTIONS = {
+    '衣類':     '畳んでバッグの底に入れ、隙間に小物（靴下など）を詰めるとスペースを有効活用できます。',
+    '電子機器': '緩衝材で包み、充電器・ケーブルは小物ポーチにまとめましょう。',
+    'トイレタリー': '漏れ防止のためジップバッグに入れ、ポーチに収納して持ち運びを楽にします。',
+    // 新しいカテゴリを追加するときはここに
+  };
+
+  // スキャン→検出→指示表示
+  async function scanOnce() {
+    suggestionsEl.innerHTML = '<li>スキャン中…</li>';
+
+    const preds = await model.detect(video);
+    const items = loadPackItems();
+    suggestionsEl.innerHTML = '';
+
+    preds.forEach(p => {
+      if (p.score < 0.5) return;
+      const en = p.class;
+      const jp = MAP_EN_TO_JP[en] || null;
+
+      const li = document.createElement('li');
+
+      if (jp) {
+        // リスト内でアイテム名と一致するか
+        const idx = items.findIndex(it => it.name === jp);
+        if (idx > -1) {
+          const category = items[idx].category;
+          const instr = INSTRUCTIONS[category] || 'チェックリストで✔を入れてください。';
+          li.textContent = `✅ 「${jp}」を検出しました → ${instr}`;
+        } else {
+          li.textContent = `⚠️ 「${jp}」（${en}）を検出 → リストにないので、追加を検討してください。`;
         }
-      });
-      video.srcObject = stream;
-      await new Promise(resolve => video.onloadedmetadata = resolve);
-      await video.play();  // iOS Safari 自動再生対策
-      return video;
-    }
+      } else {
+        li.textContent = `❓ 未知の物体「${en}」を検出 → 手動で確認をお願いします。`;
+      }
 
-    // coco-ssd モデル読み込み
-    async function loadModel() {
+      suggestionsEl.appendChild(li);
+    });
+
+    if (!suggestionsEl.children.length) {
+      suggestionsEl.innerHTML = '<li>何も検出できませんでした。カメラ枠に対象物を入れて再スキャンを。</li>';
+    }
+  }
+
+  // モデル読み込み＆ボタン有効化
+  (async () => {
+    try {
+      // カメラセットアップ（省略。元コードの setupCamera を呼ぶ）
+      await setupCamera();
       model = await cocoSsd.load();
       scanBtn.disabled = false;
-      console.log('Model loaded');
+      scanBtn.addEventListener('click', scanOnce);
+    } catch (e) {
+      console.error(e);
+      suggestionsEl.innerHTML = `<li>カメラ起動に失敗: ${e.message}</li>`;
     }
-
-    // PackHuck のリストを取得
-    function loadPackItems() {
-      return JSON.parse(localStorage.getItem('packhuck_items')) || [];
-    }
-
-    // スキャン→検出→指示表示
-    async function scanOnce() {
-      suggestionsEl.innerHTML = '<li>スキャン中…</li>';
-      const preds = await model.detect(video);
-      const items = loadPackItems();
-      suggestionsEl.innerHTML = '';
-
-      const map = {
-        'laptop':     'パソコン',
-        'cell phone': 'スマホ',
-        'book':       '本',
-        'backpack':   'バッグ',
-        'bottle':     '水筒/ペットボトル',
-        // 必要に応じて拡張…
-      };
-
-      preds.forEach(p => {
-        if (p.score < 0.5) return;
-        const en = p.class;
-        const jp = map[en] || null;
-        const li = document.createElement('li');
-
-        if (jp) {
-          const idx = items.findIndex(it => it.name === jp);
-          if (idx > -1) {
-            li.textContent = `✅ 「${jp}」を検出しました → チェックリストで✔を入れてください。`;
-          } else {
-            li.textContent = `⚠️ 「${jp}」（${en}）を検出 → リストにないので追加を検討してください。`;
-          }
-        } else {
-          li.textContent = `❓ 未知の物体「${en}」を検出 → 手動で確認を。`;
-        }
-        suggestionsEl.appendChild(li);
-      });
-
-      if (!suggestionsEl.children.length) {
-        suggestionsEl.innerHTML = '<li>何も検出できませんでした。カメラ枠に対象物を入れて再スキャンを。</li>';
-      }
-    }
-
-    // 初期化
-    (async () => {
-      try {
-        await setupCamera();
-        await loadModel();
-        scanBtn.addEventListener('click', scanOnce);
-      } catch (e) {
-        console.error(e);
-        suggestionsEl.innerHTML = `<li>カメラ起動に失敗: ${e.message}</li>`;
-      }
-    })();
-  </script>
+  })();
+</script>
 </body>
 </html>
