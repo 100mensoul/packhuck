@@ -1,36 +1,258 @@
-<h1>PACKHUCK - にづくりチェック</h1>
-<p>以下の荷物をチェックしてね！チェック状態はブラウザに保存されます。</p>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>PACKHUCK - カテゴリ付き荷造り</title>
+<style>
+:root {
+  /* カラーテーマ */
+  --bg-color: #f9f9f9;
+  --card-bg: #ffffff;
+  --primary-color: #3e8ef7;
+  --danger-color: #f25c5c;
+  --text-color: #333333;
+  --font-family: 'Helvetica Neue', Arial, sans-serif;
+  --base-spacing: 1rem;
+}
 
-<ul id="packing-list">
-  <li><label><input type="checkbox"> 下着</label></li>
-  <li><label><input type="checkbox"> 靴下</label></li>
-  <li><label><input type="checkbox"> Tシャツ</label></li>
-  <li><label><input type="checkbox"> ズボン</label></li>
-  <li><label><input type="checkbox"> 充電器</label></li>
-  <li><label><input type="checkbox"> パソコン</label></li>
-  <li><label><input type="checkbox"> 化粧品</label></li>
-  <li><label><input type="checkbox"> 歯ブラシ</label></li>
-</ul>
-<button onclick="clearChecks()">チェックリセット</button>
+/* ベース */
+body {
+  margin: 0;
+  padding: var(--base-spacing);
+  font-family: var(--font-family);
+  color: var(--text-color);
+  background-color: var(--bg-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
-<script>
-  const list = document.getElementById('packing-list');
-  const items = list.querySelectorAll('input[type="checkbox"]');
+h1 {
+  margin-bottom: calc(var(--base-spacing) * 0.5);
+  color: var(--primary-color);
+  font-size: 1.8rem;
+  text-align: center;
+}
 
-  // ロード時に保存状態を復元
-  items.forEach((item, index) => {
-    const checked = localStorage.getItem('packhuck_item_' + index);
-    if (checked === 'true') item.checked = true;
-    item.addEventListener('change', () => {
-      localStorage.setItem('packhuck_item_' + index, item.checked);
-    });
-  });
+/* 入力エリア */
+#add-item {
+  display: flex;
+  width: 100%;
+  max-width: 480px;
+  gap: 0.5rem;
+  margin-bottom: var(--base-spacing);
+}
 
-  function clearChecks() {
-    items.forEach((item, index) => {
-      item.checked = false;
-      localStorage.setItem('packhuck_item_' + index, false);
-    });
+#add-item input,
+#add-item select {
+  flex: 1;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+#add-item button {
+  padding: 0 1rem;
+  font-size: 1rem;
+  background-color: var(--primary-color);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* リスト本体 */
+#packing-list {
+  width: 100%;
+  max-width: 480px;
+}
+
+#packing-list h2 {
+  margin: calc(var(--base-spacing) * 0.8) 0 calc(var(--base-spacing) * 0.4);
+  font-size: 1.2rem;
+  border-bottom: 2px solid var(--primary-color);
+}
+
+#packing-list li {
+  display: flex;
+  align-items: center;
+  background: var(--card-bg);
+  margin-bottom: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+#packing-list li label {
+  flex: 1;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+#packing-list li input[type="checkbox"] {
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-right: 0.5rem;
+}
+
+#packing-list li button {
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  color: var(--danger-color);
+  cursor: pointer;
+  padding: 0 0.5rem;
+}
+
+/* リセットボタン */
+#clear-btn {
+  width: 100%;
+  max-width: 480px;
+  padding: 0.75rem;
+  font-size: 1rem;
+  background-color: #fff;
+  color: var(--primary-color);
+  border: 2px solid var(--primary-color);
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: var(--base-spacing);
+}
+
+/* レスポンシブ調整 */
+@media (max-width: 600px) {
+  :root {
+    --base-spacing: 0.75rem;
   }
-</script>
+  h1 {
+    font-size: 1.6rem;
+  }
+  #add-item input,
+  #add-item select,
+  #add-item button,
+  #clear-btn {
+    font-size: 0.9rem;
+    padding: 0.6rem;
+  }
+  #packing-list li {
+    padding: 0.6rem;
+  }
+}
+</style>
+</head>
+<body>
+  <h1>PACKHUCK</h1>
 
+  <!-- アイテム追加フォーム -->
+  <div id="add-item">
+    <input id="new-item" type="text" placeholder="新しいアイテムを入力">
+    <select id="new-category">
+      <option value="衣類">衣類</option>
+      <option value="電子機器">電子機器</option>
+      <option value="トイレタリー">トイレタリー</option>
+    </select>
+    <button id="add-btn">追加</button>
+  </div>
+
+  <!-- チェックリスト本体 -->
+  <div id="packing-list"></div>
+
+  <!-- リセットボタン -->
+  <button id="clear-btn">チェックリセット</button>
+
+  <script>
+    const STORAGE_KEY = 'packhuck_items';
+    const CATEGORIES = ['衣類','電子機器','トイレタリー'];
+
+    // 要素参照
+    const listContainer = document.getElementById('packing-list');
+    const newItemInput = document.getElementById('new-item');
+    const newCategorySelect = document.getElementById('new-category');
+
+    // ストレージから読み込み or 初期データ
+    let items = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [
+      { name:'下着',   done:false, category:'衣類' },
+      { name:'靴下',   done:false, category:'衣類' },
+      { name:'Tシャツ', done:false, category:'衣類' },
+      { name:'充電器', done:false, category:'電子機器' },
+      { name:'パソコン', done:false, category:'電子機器' },
+      { name:'歯ブラシ', done:false, category:'トイレタリー' }
+    ];
+
+    // 保存
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+
+    // 描画
+    function render() {
+      listContainer.innerHTML = '';
+      // カテゴリごとにグルーピング
+      const groups = {};
+      items.forEach((it, idx) => {
+        if (!groups[it.category]) groups[it.category] = [];
+        groups[it.category].push({ ...it, idx });
+      });
+      // 各カテゴリ見出し＋アイテム
+      CATEGORIES.forEach(cat => {
+        const group = groups[cat];
+        if (!group || group.length === 0) return;
+        // 見出し
+        const h2 = document.createElement('h2');
+        h2.textContent = cat;
+        listContainer.appendChild(h2);
+        // リスト
+        group.forEach(({ name, done, idx }) => {
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <label>
+              <input type="checkbox" ${done ? 'checked' : ''} data-idx="${idx}">
+              ${name}
+            </label>
+            <button data-idx="${idx}">&times;</button>
+          `;
+          listContainer.appendChild(li);
+        });
+      });
+    }
+
+    // イベント：チェック変更
+    listContainer.addEventListener('change', e => {
+      if (e.target.matches('input[type="checkbox"]')) {
+        const i = e.target.dataset.idx;
+        items[i].done = e.target.checked;
+        save();
+      }
+    });
+    // イベント：削除
+    listContainer.addEventListener('click', e => {
+      if (e.target.matches('button')) {
+        const i = e.target.dataset.idx;
+        items.splice(i, 1);
+        save();
+        render();
+      }
+    });
+    // アイテム追加
+    document.getElementById('add-btn').addEventListener('click', () => {
+      const name = newItemInput.value.trim();
+      const category = newCategorySelect.value;
+      if (!name) return;
+      items.push({ name, done:false, category });
+      newItemInput.value = '';
+      save();
+      render();
+    });
+    // リセット
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      items.forEach(it => it.done = false);
+      save();
+      render();
+    });
+
+    // 初回レンダー
+    render();
+  </script>
+</body>
+</html>
