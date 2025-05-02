@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>PACKHUCK - カテゴリ付き荷造り</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 1rem;
+      background: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    #add-item {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    #add-item input, #add-item select {
+      flex: 1;
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
+    #add-item button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+    }
+    h2 {
+      margin-top: 1rem;
+      font-size: 1.1rem;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 0.2rem;
+    }
+    #packing-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    #packing-list li {
+      display: flex;
+      align-items: center;
+      padding: 0.5rem;
+      background: #fff;
+      margin-bottom: 0.5rem;
+      border-radius: 4px;
+    }
+    #packing-list li label {
+      flex: 1;
+      cursor: pointer;
+    }
+    #packing-list li button {
+      background: transparent;
+      border: none;
+      color: #c00;
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 0 0.5rem;
+    }
+    #clear-btn {
+      display: block;
+      width: 100%;
+      padding: 0.7rem;
+      font-size: 1rem;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>PACKHUCK</h1>
+
+  <!-- アイテム追加フォーム -->
+  <div id="add-item">
+    <input id="new-item" type="text" placeholder="新しいアイテムを入力">
+    <select id="new-category">
+      <option value="衣類">衣類</option>
+      <option value="電子機器">電子機器</option>
+      <option value="トイレタリー">トイレタリー</option>
+    </select>
+    <button id="add-btn">追加</button>
+  </div>
+
+  <!-- チェックリスト本体 -->
+  <div id="packing-list"></div>
+
+  <!-- リセットボタン -->
+  <button id="clear-btn">チェックリセット</button>
+
+  <script>
+    const STORAGE_KEY = 'packhuck_items';
+    const CATEGORIES = ['衣類','電子機器','トイレタリー'];
+
+    // 要素参照
+    const listContainer = document.getElementById('packing-list');
+    const newItemInput = document.getElementById('new-item');
+    const newCategorySelect = document.getElementById('new-category');
+
+    // ストレージから読み込み or 初期データ
+    let items = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [
+      { name:'下着',   done:false, category:'衣類' },
+      { name:'靴下',   done:false, category:'衣類' },
+      { name:'Tシャツ', done:false, category:'衣類' },
+      { name:'充電器', done:false, category:'電子機器' },
+      { name:'パソコン', done:false, category:'電子機器' },
+      { name:'歯ブラシ', done:false, category:'トイレタリー' }
+    ];
+
+    // 保存
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+
+    // 描画
+    function render() {
+      listContainer.innerHTML = '';
+      // カテゴリごとにグルーピング
+      const groups = {};
+      items.forEach((it, idx) => {
+        if (!groups[it.category]) groups[it.category] = [];
+        groups[it.category].push({ ...it, idx });
+      });
+      // 各カテゴリ見出し＋アイテム
+      CATEGORIES.forEach(cat => {
+        const group = groups[cat];
+        if (!group || group.length === 0) return;
+        // 見出し
+        const h2 = document.createElement('h2');
+        h2.textContent = cat;
+        listContainer.appendChild(h2);
+        // リスト
+        group.forEach(({ name, done, idx }) => {
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <label>
+              <input type="checkbox" ${done ? 'checked' : ''} data-idx="${idx}">
+              ${name}
+            </label>
+            <button data-idx="${idx}">&times;</button>
+          `;
+          listContainer.appendChild(li);
+        });
+      });
+    }
+
+    // イベント：チェック変更
+    listContainer.addEventListener('change', e => {
+      if (e.target.matches('input[type="checkbox"]')) {
+        const i = e.target.dataset.idx;
+        items[i].done = e.target.checked;
+        save();
+      }
+    });
+    // イベント：削除
+    listContainer.addEventListener('click', e => {
+      if (e.target.matches('button')) {
+        const i = e.target.dataset.idx;
+        items.splice(i, 1);
+        save();
+        render();
+      }
+    });
+    // アイテム追加
+    document.getElementById('add-btn').addEventListener('click', () => {
+      const name = newItemInput.value.trim();
+      const category = newCategorySelect.value;
+      if (!name) return;
+      items.push({ name, done:false, category });
+      newItemInput.value = '';
+      save();
+      render();
+    });
+    // リセット
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      items.forEach(it => it.done = false);
+      save();
+      render();
+    });
+
+    // 初回レンダー
+    render();
+  </script>
+</body>
+</html>
