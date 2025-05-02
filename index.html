@@ -1,0 +1,36 @@
+<h1>PACKHUCK - にづくりチェック</h1>
+<p>以下の荷物をチェックしてね！チェック状態はブラウザに保存されます。</p>
+
+<ul id="packing-list">
+  <li><label><input type="checkbox"> 下着</label></li>
+  <li><label><input type="checkbox"> 靴下</label></li>
+  <li><label><input type="checkbox"> Tシャツ</label></li>
+  <li><label><input type="checkbox"> ズボン</label></li>
+  <li><label><input type="checkbox"> 充電器</label></li>
+  <li><label><input type="checkbox"> パソコン</label></li>
+  <li><label><input type="checkbox"> 化粧品</label></li>
+  <li><label><input type="checkbox"> 歯ブラシ</label></li>
+</ul>
+<button onclick="clearChecks()">チェックリセット</button>
+
+<script>
+  const list = document.getElementById('packing-list');
+  const items = list.querySelectorAll('input[type="checkbox"]');
+
+  // ロード時に保存状態を復元
+  items.forEach((item, index) => {
+    const checked = localStorage.getItem('packhuck_item_' + index);
+    if (checked === 'true') item.checked = true;
+    item.addEventListener('change', () => {
+      localStorage.setItem('packhuck_item_' + index, item.checked);
+    });
+  });
+
+  function clearChecks() {
+    items.forEach((item, index) => {
+      item.checked = false;
+      localStorage.setItem('packhuck_item_' + index, false);
+    });
+  }
+</script>
+
