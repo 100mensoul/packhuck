@@ -79,7 +79,7 @@
 <body>
   <h1>スキャンモード</h1>
 
-  <!-- カメラプレビュー -->
+  <!-- カメラプレビュー（背面カメラ指定） -->
   <video
     id="video"
     autoplay
@@ -104,9 +104,13 @@
     const scanBtn = document.getElementById('scan-btn');
     const suggestionsEl = document.getElementById('suggestions');
 
-    // カメラ映像をセット＆再生
+    // カメラ映像をセット＆再生（背面カメラ優先）
     async function setupCamera() {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' }  // ← ここでリアカメラを指定
+        }
+      });
       video.srcObject = stream;
       await new Promise(resolve => video.onloadedmetadata = resolve);
       await video.play();  // iOS Safari 自動再生対策
