@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>PACKHUCK - にづくりチェック</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 1rem;
+      background: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    #add-item {
+      display: flex;
+      margin-bottom: 1rem;
+    }
+    #add-item input {
+      flex: 1;
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
+    #add-item button {
+      padding: 0.5rem 1rem;
+      margin-left: 0.5rem;
+      font-size: 1rem;
+    }
+    #packing-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 1rem 0;
+    }
+    #packing-list li {
+      display: flex;
+      align-items: center;
+      padding: 0.5rem;
+      background: #fff;
+      margin-bottom: 0.5rem;
+      border-radius: 4px;
+    }
+    #packing-list li label {
+      flex: 1;
+      cursor: pointer;
+    }
+    #packing-list li button {
+      background: transparent;
+      border: none;
+      color: #c00;
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 0 0.5rem;
+    }
+    #clear-btn {
+      display: block;
+      width: 100%;
+      padding: 0.7rem;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>PACKHUCK</h1>
+  <div id="add-item">
+    <input id="new-item" type="text" placeholder="新しいアイテムを入力">
+    <button id="add-btn">追加</button>
+  </div>
+  <ul id="packing-list"></ul>
+  <button id="clear-btn">チェックリセット</button>
+
+  <script>
+    const STORAGE_KEY = 'packhuck_items';
+    const listEl = document.getElementById('packing-list');
+    const newItemInput = document.getElementById('new-item');
+
+    // 初期リスト
+    let items = JSON.parse(localStorage.getItem(STORAGE_KEY)) 
+                || [
+                  { name: '下着',   done: false },
+                  { name: '靴下',   done: false },
+                  { name: 'Tシャツ', done: false },
+                  { name: 'ズボン', done: false },
+                  { name: '充電器', done: false },
+                  { name: 'パソコン', done: false },
+                  { name: '化粧品', done: false },
+                  { name: '歯ブラシ', done: false }
+                ];
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+
+    function render() {
+      listEl.innerHTML = '';
+      items.forEach((item, idx) => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <label>
+            <input type="checkbox" ${item.done ? 'checked' : ''} data-index="${idx}">
+            ${item.name}
+          </label>
+          <button data-index="${idx}">&times;</button>
+        `;
+        listEl.appendChild(li);
+      });
+    }
+
+    // イベント：チェック変更
+    listEl.addEventListener('change', e => {
+      if (!e.target.matches('input[type="checkbox"]')) return;
+      const i = e.target.dataset.index;
+      items[i].done = e.target.checked;
+      save();
+    });
+
+    // イベント：削除ボタン
+    listEl.addEventListener('click', e => {
+      if (!e.target.matches('button')) return;
+      const i = e.target.dataset.index;
+      items.splice(i, 1);
+      save();
+      render();
+    });
+
+    // アイテム追加
+    document.getElementById('add-btn').addEventListener('click', () => {
+      const name = newItemInput.value.trim();
+      if (!name) return;
+      items.push({ name, done: false });
+      newItemInput.value = '';
+      save();
+      render();
+    });
+
+    // リセット
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      items.forEach(item => item.done = false);
+      save();
+      render();
+    });
+
+    // 初回レンダー
+    render();
+  </script>
+</body>
+</html>
