@@ -2,14 +2,26 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PACKHUCK スキャン</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <h1>スキャンモード</h1>
-  <video id="video" autoplay playsinline width="320" height="240"></video>
-  <button id="scan-btn">今すぐスキャン</button>
+
+  <!-- カメラプレビュー -->
+  <video
+    id="video"
+    autoplay
+    muted
+    playsinline
+    width="320"
+    height="240"
+    style="display:block; max-width:100%; margin:0 auto 1rem; border:1px solid #ccc;"
+  ></video>
+
+  <!-- スキャンボタンはモデル読み込み後に有効化 -->
+  <button id="scan-btn" disabled>今すぐスキャン</button>
 
   <h2>検出結果と指示</h2>
   <ul id="suggestions"></ul>
@@ -17,6 +29,7 @@
   <!-- TensorFlow.js と coco-ssd モデル -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+  <!-- スキャン用ロジック -->
   <script src="js/scan.js"></script>
 </body>
 </html>
