@@ -2,9 +2,79 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>PACKHUCK スキャン</title>
-  <link rel="stylesheet" href="css/style.css">
+  <!-- ======= インライン CSS ======= -->
+  <style>
+    :root {
+      --primary-color: #3e8ef7;
+      --bg-color: #f9f9f9;
+      --text-color: #333;
+      --card-bg: #fff;
+      --danger-color: #f25c5c;
+      --font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 1rem;
+      font-family: var(--font-family);
+      color: var(--text-color);
+      background: var(--bg-color);
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    h1 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      text-align: center;
+      color: var(--primary-color);
+      font-size: 1.6rem;
+    }
+    video {
+      display: block;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+    button {
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      color: #fff;
+      background: var(--primary-color);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    h2 {
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+      font-size: 1.2rem;
+      border-bottom: 2px solid var(--primary-color);
+      padding-bottom: 0.2rem;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    ul li {
+      background: var(--card-bg);
+      margin-bottom: 0.5rem;
+      padding: 0.75rem;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      font-size: 0.95rem;
+    }
+  </style>
 </head>
 <body>
   <h1>スキャンモード</h1>
@@ -15,21 +85,97 @@
     autoplay
     muted
     playsinline
-    width="320"
-    height="240"
-    style="display:block; max-width:100%; margin:0 auto 1rem; border:1px solid #ccc;"
   ></video>
 
-  <!-- スキャンボタンはモデル読み込み後に有効化 -->
+  <!-- スキャン開始ボタン -->
   <button id="scan-btn" disabled>今すぐスキャン</button>
 
   <h2>検出結果と指示</h2>
   <ul id="suggestions"></ul>
 
-  <!-- TensorFlow.js と coco-ssd モデル -->
+  <!-- ======= 依存ライブラリ ======= -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
-  <!-- スキャン用ロジック -->
-  <script src="js/scan.js"></script>
+
+  <!-- ======= インライン JS ======= -->
+  <script>
+    let model;
+    const video = document.getElementById('video');
+    const scanBtn = document.getElementById('scan-btn');
+    const suggestionsEl = document.getElementById('suggestions');
+
+    // カメラ映像をセット＆再生
+    async function setupCamera() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      await new Promise(resolve => video.onloadedmetadata = resolve);
+      await video.play();  // iOS Safari 自動再生対策
+      return video;
+    }
+
+    // coco-ssd モデル読み込み
+    async function loadModel() {
+      model = await cocoSsd.load();
+      scanBtn.disabled = false;
+      console.log('Model loaded');
+    }
+
+    // PackHuck のリストを取得
+    function loadPackItems() {
+      return JSON.parse(localStorage.getItem('packhuck_items')) || [];
+    }
+
+    // スキャン→検出→指示表示
+    async function scanOnce() {
+      suggestionsEl.innerHTML = '<li>スキャン中…</li>';
+      const preds = await model.detect(video);
+      const items = loadPackItems();
+      suggestionsEl.innerHTML = '';
+
+      const map = {
+        'laptop':     'パソコン',
+        'cell phone': 'スマホ',
+        'book':       '本',
+        'backpack':   'バッグ',
+        'bottle':     '水筒/ペットボトル',
+        // 必要に応じて拡張…
+      };
+
+      preds.forEach(p => {
+        if (p.score < 0.5) return;
+        const en = p.class;
+        const jp = map[en] || null;
+        const li = document.createElement('li');
+
+        if (jp) {
+          const idx = items.findIndex(it => it.name === jp);
+          if (idx > -1) {
+            li.textContent = `✅ 「${jp}」を検出しました → チェックリストで✔を入れてください。`;
+          } else {
+            li.textContent = `⚠️ 「${jp}」（${en}）を検出 → リストにないので追加を検討してください。`;
+          }
+        } else {
+          li.textContent = `❓ 未知の物体「${en}」を検出 → 手動で確認を。`;
+        }
+        suggestionsEl.appendChild(li);
+      });
+
+      if (!suggestionsEl.children.length) {
+        suggestionsEl.innerHTML = '<li>何も検出できませんでした。カメラ枠に対象物を入れて再スキャンを。</li>';
+      }
+    }
+
+    // 初期化
+    (async () => {
+      try {
+        await setupCamera();
+        await loadModel();
+        scanBtn.addEventListener('click', scanOnce);
+      } catch (e) {
+        console.error(e);
+        suggestionsEl.innerHTML = `<li>カメラ起動に失敗: ${e.message}</li>`;
+      }
+    })();
+  </script>
 </body>
 </html>
